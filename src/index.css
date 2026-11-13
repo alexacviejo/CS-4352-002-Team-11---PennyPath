@@ -255,9 +255,66 @@ small { color: var(--muted); }
 .forecast { padding: 17px; margin-top: 13px; }
 .forecast > div:first-child { display: flex; justify-content: space-between; }
 .forecast > div:first-child > b { color: var(--forest); }
-.forecast-bars { height: 50px; display: flex; align-items: flex-end; gap: 6px; margin: 12px 0 6px; }
-.forecast-bars i { flex: 1; background: var(--sage-light); border-radius: 5px 5px 0 0; }
-.forecast-bars i:nth-child(1) { height: 28%; }.forecast-bars i:nth-child(2) { height: 43%; }.forecast-bars i:nth-child(3) { height: 62%; }.forecast-bars i:nth-child(4) { height: 80%; }.forecast-bars i:nth-child(5) { height: 100%; background: var(--forest); }
+.active-goal {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+.goal-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.forecast-bars {
+  height: 70px;
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  margin: 12px 0 6px;
+  overflow-x: auto;
+}
+
+.forecast-bars i {
+  flex: 1 0 12px;
+  min-width: 12px;
+  background: var(--sage-light);
+  border-radius: 5px 5px 0 0;
+  transition: height 0.3s ease;
+}
+
+.forecast-bars i:last-child {
+  background: var(--forest);
+}
+
+.challenge-result {
+  margin-top: 20px;
+  padding: 20px;
+}
+
+.challenge-result h2 {
+  margin: 12px 0 8px;
+}
+
+.challenge-result p {
+  line-height: 1.6;
+}
+
+.decision button:disabled {
+  cursor: default;
+}
+
+.sticky-action.dual {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sticky-action.dual > * {
+  width: 100%;
+}
 .forecast p { font-size: 10px; display: flex; justify-content: space-between; }
 .sim-header { padding: 18px 0 20px; text-align: center; }
 .sim-header h1 { margin: 5px 0; }
