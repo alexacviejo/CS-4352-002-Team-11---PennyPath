@@ -312,3 +312,117 @@ small { color: var(--muted); }
   .penny { width: 145px; }
   .budget-input-card .field { grid-template-columns: 1fr 96px; }
 }
+
+/* Budget guidance card */
+.budget-guidance {
+  margin: 24px 0;
+  padding: 24px;
+}
+
+.guidance-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.guidance-heading h2 {
+  margin: 6px 0 0;
+  font-size: 1.2rem;
+}
+
+.guidance-heading > svg {
+  color: #2F6B4F;
+}
+
+.guidance-description {
+  color: #777;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin-bottom: 24px;
+}
+
+.guidance-item {
+  margin-bottom: 20px;
+}
+
+.guidance-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 9px;
+  font-size: 0.95rem;
+}
+
+.guidance-label span {
+  font-weight: 700;
+}
+
+.guidance-label small {
+  color: #999;
+  font-weight: 400;
+}
+
+.guidance-track {
+  height: 10px;
+  width: 100%;
+  background: #eeeeea;
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.guidance-fill {
+  height: 100%;
+  border-radius: 20px;
+  transition: width 0.3s ease;
+}
+
+.needs-fill {
+  background: #8FB996;
+}
+
+.wants-fill {
+  background: #F4C7AB;
+}
+
+.savings-fill {
+  background: #2F6B4F;
+}
+
+.guidance-feedback {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 12px;
+  margin-top: 24px;
+}
+
+.guidance-feedback svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.guidance-feedback p {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.guidance-warning {
+  background: #FFF4E5;
+  color: #80551D;
+}
+
+.guidance-positive {
+  background: #EAF3EC;
+  color: #2F6B4F;
+}
+
+.guidance-disclaimer {
+  display: block;
+  color: #999;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  margin-top: 16px;
+}
