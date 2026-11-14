@@ -1,15 +1,64 @@
+import { useEffect, useState } from "react";
+import { supabase } from "../lib/supabase";
 import type { AppModel } from "./useAppModel";
 import { expenses, lessons } from "../data/content";
 import { Icon, Penny, Button, NumberInput, TopBar, Progress } from "../components/UI";
 
+function getGreeting() {
+  const hour = new Date().getHours();
+
+  if (hour >= 5 && hour < 12) {
+    return "GOOD MORNING";
+  }
+
+  if (hour >= 12 && hour < 17) {
+    return "GOOD AFTERNOON";
+  }
+
+  return "GOOD EVENING";
+}
+
 export default function HomeView({ model }: { model: AppModel }) {
   const { tab, setTab, lessonStep, setLessonStep, lessonTitle, setLessonTitle, answer, setAnswer, feedback, setFeedback, lessonComplete, setLessonComplete, budgetStep, setBudgetStep, income, setIncome, allocations, setAllocations, budgetSaved, setBudgetSaved, goalStep, setGoalStep, goalName, setGoalName, goalCategory, setGoalCategory, target, setTarget, targetDate, setTargetDate, monthlySaving, setMonthlySaving, goalCreated, setGoalCreated, simChoice, setSimChoice, totalExpenses, remaining, goalMonths, outcome, navigate, resetAll, openLesson } = model;
+  
+  const [displayName, setDisplayName] = useState("THERE");
+  const [greeting, setGreeting] = useState(getGreeting);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadUserName() {
+      const { data, error } = await supabase.auth.getUser();
+
+      if (error || !active) return;
+
+      const savedName = data.user?.user_metadata?.display_name;
+
+      setDisplayName(
+        typeof savedName === "string" && savedName.trim()
+          ? savedName.trim().toUpperCase()
+          : "THERE"
+      );
+    }
+
+    void loadUserName();
+
+    const interval = window.setInterval(() => {
+      setGreeting(getGreeting());
+    }, 60_000);
+
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
+  }, []);
+
   return (<>
           {tab === "home" && (
             <>
               <TopBar title="PennyPath" action={<button className="icon-btn" onClick={resetAll} aria-label="Reset prototype"><Icon name="reset" size={20} /></button>} />
               <section className="home-hero">
-                <div><span className="eyebrow">GOOD AFTERNOON, ALEX</span><h1>Hey, future<br />money pro!</h1><p>Penny has your next smart move ready.</p></div>
+                <div><span className="eyebrow">{greeting}, {displayName}</span><h1>Hey, future<br />money pro!</h1><p>Penny has your next smart move ready.</p></div>
                 <Penny />
               </section>
               <section className="stat-row">
@@ -37,3 +86,5 @@ export default function HomeView({ model }: { model: AppModel }) {
           )}
   </>);
 }
+
+
