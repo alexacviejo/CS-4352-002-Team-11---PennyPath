@@ -312,3 +312,179 @@ small { color: var(--muted); }
   .penny { width: 145px; }
   .budget-input-card .field { grid-template-columns: 1fr 96px; }
 }
+
+
+/* ========================================
+   PENNYPATH AUTHENTICATION
+   ======================================== */
+
+.auth-screen {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 30px 22px;
+  background: var(--cream);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 380px;
+  text-align: center;
+}
+
+.auth-logo {
+  width: 76px;
+  height: 76px;
+  margin: 0 auto 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 24px;
+  background: var(--sage-light);
+  color: var(--forest);
+  font-size: 42px;
+}
+
+.auth-card h1 {
+  color: var(--forest-dark);
+  font-family: "Nunito", sans-serif;
+  font-size: 32px;
+  margin-bottom: 10px;
+}
+
+.auth-card > p {
+  color: var(--muted);
+  font-size: 14px;
+  margin-bottom: 28px;
+}
+
+.auth-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 24px;
+  padding: 5px;
+  background: var(--sage-light);
+  border-radius: 16px;
+}
+
+.auth-tabs button {
+  padding: 12px;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--forest);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.auth-tabs button.active {
+  background: var(--paper);
+  box-shadow: var(--shadow);
+}
+
+.auth-card form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: left;
+}
+
+.auth-card label {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.auth-card input {
+  width: 100%;
+  min-height: 52px;
+  padding: 13px 16px;
+  border: 1.5px solid var(--line);
+  border-radius: 16px;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 16px;
+}
+
+.auth-card input:focus {
+  border-color: var(--forest);
+  outline: 3px solid rgba(143, 185, 150, 0.2);
+}
+
+.auth-card form > button {
+  width: 100%;
+  min-height: 52px;
+  margin-top: 12px;
+  border: none;
+  border-radius: 17px;
+  background: var(--forest);
+  color: white;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 5px 0 var(--forest-dark);
+}
+
+.auth-card form > button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.auth-error {
+  color: var(--danger);
+  font-size: 13px;
+  text-align: center;
+}
+
+.auth-success {
+  color: var(--forest);
+  font-size: 13px;
+  text-align: center;
+}
+
+.auth-switch {
+  margin-top: 24px;
+  font-size: 13px;
+  text-align: center;
+}
+
+.auth-switch button {
+  border: none;
+  background: transparent;
+  color: var(--forest);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+
+/* PennyPath Account Controls */
+
+.account-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 0 6px;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--forest-dark);
+}
+
+.logout-btn {
+  border: 1px solid var(--sage);
+  border-radius: 12px;
+  background: var(--sage-light);
+  color: var(--forest-dark);
+  padding: 9px 14px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.logout-btn:focus-visible {
+  outline: 3px solid var(--sage);
+  outline-offset: 2px;
+}
+
