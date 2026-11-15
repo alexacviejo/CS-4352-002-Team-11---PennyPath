@@ -29,8 +29,8 @@ function mapDatabaseGoal(goal: DatabaseGoal): SavingsGoal {
     category: goal.category,
     target: goal.target_amount,
     targetDate: goal.target_date ?? "",
-    monthlySaving: goal.monthly_saving,
-    currentSavings: 0,
+    monthlySaving: Number(goal.monthly_saving),
+    currentSavings: Number(goal.current_savings),
   };
 }
 
@@ -361,6 +361,7 @@ const setLessonComplete = (_value: boolean) => {
         target_amount: target,
         target_date: targetDate || null,
         monthly_saving: actualMonthlySaving,
+        current_savings: currentSavings
       };
 
       if (selectedGoalId !== null) {

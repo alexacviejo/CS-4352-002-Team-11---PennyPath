@@ -19,7 +19,7 @@ function getGreeting() {
 }
 
 export default function HomeView({ model }: { model: AppModel }) {
-  const { tab, setTab, lessonStep, setLessonStep, lessonTitle, setLessonTitle, answer, setAnswer, feedback, setFeedback, lessonComplete, setLessonComplete, budgetStep, setBudgetStep, income, setIncome, allocations, setAllocations, budgetSaved, setBudgetSaved, goalStep, setGoalStep, goalName, setGoalName, goalCategory, setGoalCategory, target, setTarget, targetDate, setTargetDate, monthlySaving, setMonthlySaving, goalCreated, setGoalCreated, simChoice, setSimChoice, totalExpenses, remaining, goalMonths, outcome, navigate, resetAll, openLesson, nextLesson, openNextLesson, progressLoading, progressError  } = model;
+  const { tab, setTab, lessonStep, setLessonStep, lessonTitle, setLessonTitle, answer, setAnswer, feedback, setFeedback, lessonComplete, setLessonComplete, budgetStep, setBudgetStep, income, setIncome, allocations, setAllocations, budgetSaved, setBudgetSaved, goalStep, setGoalStep, goalName, setGoalName, goalCategory, setGoalCategory, target, setTarget, targetDate, setTargetDate, monthlySaving, setMonthlySaving, goalCreated, setGoalCreated, simChoice, setSimChoice, totalExpenses, remaining, goalMonths, outcome, navigate, resetAll, openLesson, nextLesson, openNextLesson, progressLoading, progressError, selectGoal, goals} = model;
   
   const [displayName, setDisplayName] = useState("THERE");
   const [greeting, setGreeting] = useState(getGreeting);
@@ -52,6 +52,7 @@ export default function HomeView({ model }: { model: AppModel }) {
       window.clearInterval(interval);
     };
   }, []);
+
 
   return (<>
           {tab === "home" && (
@@ -105,7 +106,61 @@ export default function HomeView({ model }: { model: AppModel }) {
               <div className="section-title"><h2>Your money snapshot</h2><button onClick={() => navigate("budget")}>See budget</button></div>
               <section className="money-grid">
                 <button className="snapshot-card budget-snapshot" onClick={() => navigate("budget")}><span className="tile-icon cream"><Icon name="wallet" /></span><small>LEFT THIS MONTH</small><b>${Math.max(0, budgetSaved ? remaining : 250).toLocaleString()}</b><span>of ${income.toLocaleString()}</span><Progress value={budgetSaved ? totalExpenses / income * 100 : 79} /></button>
-                <button className="snapshot-card goal-snapshot" onClick={() => navigate("goals")}><span className="tile-icon peach"><Icon name="target" /></span><small>SAVING FOR</small><b>{goalCreated ? goalName : "New laptop"}</b><span>$225 of ${target}</span><Progress value={225 / target * 100} /></button>
+                {goals.length > 0 ? (
+                  <button
+                    className="snapshot-card goal-snapshot"
+                    onClick={() => {
+                      navigate("goals");
+                      selectGoal(goals[0].id);
+                    }}
+                  >
+                    <span className="tile-icon peach">
+                      <Icon name="target" />
+                    </span>
+
+                    <small>SAVING FOR</small>
+
+                    <b>{goals[0].name}</b>
+
+                    <span>
+                      ${goals[0].currentSavings.toLocaleString()} of{" "}
+                      ${goals[0].target.toLocaleString()}
+                    </span>
+
+                    <Progress
+                      value={
+                        Number(goals[0].target) > 0
+                          ? Math.min(
+                              100,
+                              Math.max(
+                                0,
+                                (Number(goals[0].currentSavings ?? 0) /
+                                  Number(goals[0].target)) *
+                                  100
+                              )
+                            )
+                          : 0
+                      }
+                    />
+                  </button>
+                ) : (
+                  <button
+                    className="snapshot-card goal-snapshot"
+                    onClick={() => {
+                      navigate("goals");
+                      setGoalStep("create");
+                    }}
+                  >
+                    <span className="tile-icon peach">
+                      <Icon name="target" />
+                    </span>
+
+                    <small>SAVING FOR</small>
+                    <b>Create a savings goal</b>
+                    <span>No savings goals yet</span>
+                    <Progress value={0} />
+                  </button>
+                )}
               </section>
               <div className="section-title"><h2>Quick start</h2></div>
               <section className="quick-list">

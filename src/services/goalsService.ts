@@ -9,6 +9,7 @@ export type SavingsGoal = {
   target_amount: number;
   target_date: string | null;
   monthly_saving: number;
+  current_savings: number;
   created_at: string;
   updated_at: string;
 };
@@ -19,6 +20,7 @@ export type GoalInput = {
   target_amount: number;
   target_date: string | null;
   monthly_saving: number;
+  current_savings: number;
 };
 
 // Get the currently authenticated user
