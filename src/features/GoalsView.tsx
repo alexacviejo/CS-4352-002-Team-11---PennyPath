@@ -182,7 +182,13 @@ export default function GoalsView({
     startNewGoal,
     selectGoal,
     createGoal,
-    deleteGoal
+    deleteGoal,
+    goalsLoading,
+    goalsSaving,
+    goalsError,
+    monthsUntilTarget,
+    requiredMonthlySaving,
+    isOnTrack
   } = model;
 
   // Independent challenge state
@@ -233,20 +239,26 @@ export default function GoalsView({
   }
 
   // Save a goal and return to the Goals homepage.
-  function saveAndReturn() {
-    if (!canSaveGoal) return;
+  async function saveAndReturn() {
+    if (!canSaveGoal || goalsSaving) return;
 
-    createGoal();
-    setGoalStep("overview");
+    const success = await createGoal();
+
+    if (success) {
+      setGoalStep("overview");
+    }
   }
 
   // Save a goal and start an educational challenge.
-  function saveAndChallenge() {
-    if (!canSaveGoal) return;
+  async function saveAndChallenge() {
+    if (!canSaveGoal || goalsSaving) return;
 
-    createGoal();
-    startRandomChallenge();
-  }
+    const success = await createGoal();
+
+    if (success) {
+      startRandomChallenge();
+    }
+  } 
 
   const forecastBalances = Array.from(
     { length: Math.min(goalMonths ?? 0, 240) },
@@ -280,9 +292,19 @@ export default function GoalsView({
             </p>
           </section>
 
-          <Button onClick={startNewGoal} icon="plus">
+          <Button
+            onClick={startNewGoal}
+            icon="plus"
+            disabled={goalsLoading || goalsSaving}
+          >
             Create new goal
           </Button>
+
+          {goalsError && (
+            <p role="alert" className="error-message">
+              {goalsError}
+            </p>
+          )}
 
           <div className="section-title">
             <h2>Active goals</h2>
@@ -293,7 +315,13 @@ export default function GoalsView({
             </span>
           </div>
 
-          {goals.length === 0 && (
+          {goalsLoading && (
+              <section className="card">
+                <p>Loading your savings goals...</p>
+              </section>
+            )}
+
+            {!goalsLoading && !goalsError && goals.length === 0 && (
             <section className="card">
               <p>
                 You don't have any savings goals yet.
@@ -562,6 +590,7 @@ export default function GoalsView({
         </>
       )}
 
+
       {/* REVIEW GOAL */}
       {tab === "goals" && goalStep === "review" && (
         <>
@@ -620,6 +649,32 @@ export default function GoalsView({
             </div>
           </section>
 
+          {requiredMonthlySaving !== null && (
+  <section className="card target-date-analysis">
+    <h3>Target Date Analysis</h3>
+
+    <div className="target-date-details">
+      <div className="target-date-row">
+        <span>Time remaining</span>
+        <strong>{monthsUntilTarget} months</strong>
+      </div>
+
+      <div className="target-date-row">
+        <span>Required monthly savings</span>
+        <strong>
+          {formatMoney(Math.ceil(requiredMonthlySaving))}
+        </strong>
+      </div>
+    </div>
+
+    <p className="target-date-message">
+      {isOnTrack
+        ? "You're on track to reach your goal by your target date!"
+        : "Your current monthly contribution may not be enough to reach your goal on time."}
+    </p>
+  </section>
+)}
+
           <section className="forecast card">
             <div>
               <h2>Your savings forecast</h2>
@@ -661,7 +716,7 @@ export default function GoalsView({
           {/* TWO SAVE OPTIONS */}
           <div className="sticky-action dual">
             <Button
-              disabled={!canSaveGoal}
+              disabled={!canSaveGoal || goalsSaving || goalsLoading}
               onClick={saveAndReturn}
               icon="check"
             >
@@ -669,7 +724,7 @@ export default function GoalsView({
             </Button>
 
             <Button
-              disabled={!canSaveGoal}
+              disabled={!canSaveGoal || goalsSaving || goalsLoading}
               variant="secondary"
               onClick={saveAndChallenge}
               icon="arrow"
@@ -681,7 +736,8 @@ export default function GoalsView({
           {selectedGoalId && (
             <button
               className="edit-link"
-              onClick={() => deleteGoal(selectedGoalId)}
+              onClick={() => void deleteGoal(selectedGoalId)}
+              disabled={goalsSaving}
             >
               Delete this goal
             </button>

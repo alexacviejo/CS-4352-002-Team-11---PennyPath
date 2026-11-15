@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { getBudget, saveBudget } from "../services/budgetService";
+import { getGoals, createGoal as createGoalInDatabase, updateGoal as updateGoalInDatabase, deleteGoal as deleteGoalInDatabase, type SavingsGoal as DatabaseGoal} from "../services/goalsService";
 import { defaultAllocations } from "../data/content";
 import type { Tab, LessonStep, BudgetStep, GoalStep, Allocations } from "../data/content";
 
@@ -18,6 +19,18 @@ const initialGoals: SavingsGoal[] = [{
   id: "1", name: "New laptop", category: "Tech", target: 600,
   targetDate: today(), monthlySaving: 150, currentSavings: 225
 }];
+
+function mapDatabaseGoal(goal: DatabaseGoal): SavingsGoal {
+  return {
+    id: goal.id,
+    name: goal.name,
+    category: goal.category,
+    target: goal.target_amount,
+    targetDate: goal.target_date ?? "",
+    monthlySaving: goal.monthly_saving,
+    currentSavings: 0,
+  };
+}
 
 export function useAppModel() {
   const [tab, setTab] = useState<Tab>("home");
@@ -93,7 +106,10 @@ export function useAppModel() {
   const canSaveBudget = income > 0 && remaining >= 0;
 
   // Goals state from goals branch. Database integration is a separate step.
-  const [goals, setGoals] = useState<SavingsGoal[]>(initialGoals);
+  const [goals, setGoals] = useState<SavingsGoal[]>([]);
+  const [goalsLoading, setGoalsLoading] = useState(true);
+  const [goalsSaving, setGoalsSaving] = useState(false);
+  const [goalsError, setGoalsError] = useState(""); 
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
   const [goalStep, setGoalStep] = useState<GoalStep>("overview");
   const [goalName, setGoalName] = useState("");
@@ -114,6 +130,27 @@ export function useAppModel() {
   const amountNeeded = Math.max(0, target - currentSavings);
   const goalMonths = amountNeeded === 0 ? 0 : actualMonthlySaving > 0
     ? Math.ceil(amountNeeded / actualMonthlySaving) : null;
+  // Treat each remaining calendar month (including a partial month) as one
+  // contribution opportunity. This is a planning estimate, not a payment schedule.
+  const monthsUntilTarget = useMemo(() => {
+    if (!targetDate) return null;
+    const deadline = new Date(`${targetDate}T00:00:00`);
+    if (Number.isNaN(deadline.getTime())) return null;
+    const now = new Date();
+    const todayLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    if (deadline < todayLocal) return 0;
+    const wholeMonths =
+      (deadline.getFullYear() - todayLocal.getFullYear()) * 12 +
+      deadline.getMonth() - todayLocal.getMonth();
+    return Math.max(1, wholeMonths + (deadline.getDate() > todayLocal.getDate() ? 1 : 0));
+  }, [targetDate]);
+  const requiredMonthlySaving = monthsUntilTarget !== null && monthsUntilTarget > 0
+    ? Math.ceil((amountNeeded / monthsUntilTarget) * 100) / 100
+    : null;
+  const isOnTrack = amountNeeded === 0 ||
+    (requiredMonthlySaving !== null && actualMonthlySaving >= requiredMonthlySaving);
+  const canAffordRecommendedSaving = requiredMonthlySaving !== null &&
+    requiredMonthlySaving <= availableForGoal;
   const savingsProgress = target > 0
     ? Math.min(100, (currentSavings / target) * 100) : 0;
   const totalMonthlySavings = goals.reduce((sum, goal) => sum + goal.monthlySaving, 0);
@@ -147,23 +184,69 @@ export function useAppModel() {
     setGoalStep("review");
   }
 
-  function createGoal() {
-    if (!budgetSaved || !goalName.trim() || target <= 0 || currentSavings < 0 ||
-        actualMonthlySaving <= 0 || monthlySaving > availableForGoal) return;
-    const goalData = {
-      name: goalName.trim(), category: goalCategory, target, targetDate,
-      monthlySaving: actualMonthlySaving, currentSavings
-    };
-    if (selectedGoalId !== null) {
-      setGoals((prev) => prev.map((goal) =>
-        goal.id === selectedGoalId ? { ...goal, ...goalData } : goal
-      ));
-    } else {
-      const id = crypto.randomUUID();
-      setGoals((prev) => [...prev, { id, ...goalData }]);
-      setSelectedGoalId(id);
+  async function loadGoals() {
+    try {
+      setGoalsLoading(true);
+      setGoalsError("");
+
+      const databaseGoals = await getGoals();
+
+      setGoals(databaseGoals.map(mapDatabaseGoal));
+    } catch (error) {
+      console.error("Failed to load goals:", error);
+      setGoalsError("Unable to load your savings goals.");
+    } finally {
+      setGoalsLoading(false);
     }
-    setGoalCreated(true);
+  }
+
+  useEffect(() => {
+    void loadGoals();
+  }, []);
+
+  async function createGoal(): Promise<boolean> {
+    if (
+      !budgetSaved ||
+      !goalName.trim() ||
+      target <= 0 ||
+      currentSavings < 0 ||
+      actualMonthlySaving <= 0 ||
+      monthlySaving > availableForGoal
+    ) {
+      setGoalsError("Please enter valid goal information.");
+      return false;
+    }
+
+    try {
+      setGoalsSaving(true);
+      setGoalsError("");
+
+      const goalData = {
+        name: goalName.trim(),
+        category: goalCategory,
+        target_amount: target,
+        target_date: targetDate || null,
+        monthly_saving: actualMonthlySaving,
+      };
+
+      if (selectedGoalId !== null) {
+        await updateGoalInDatabase(selectedGoalId, goalData);
+      } else {
+        const newGoal = await createGoalInDatabase(goalData);
+        setSelectedGoalId(newGoal.id);
+      }
+
+      await loadGoals();
+
+      setGoalCreated(true);
+      return true;
+    } catch (error) {
+      console.error("Failed to save goal:", error);
+      setGoalsError("Unable to save your goal. Please try again.");
+      return false;
+    } finally {
+      setGoalsSaving(false);
+    }
   }
 
   function recordSavings(amount: number) {
@@ -175,11 +258,26 @@ export function useAppModel() {
     ));
   }
 
-  function deleteGoal(id: string) {
-    setGoals((prev) => prev.filter((goal) => goal.id !== id));
-    setSelectedGoalId(null);
-    setGoalCreated(false);
-    setGoalStep("overview");
+  async function deleteGoal(id: string): Promise<boolean> {
+    try {
+      setGoalsSaving(true);
+      setGoalsError("");
+
+      await deleteGoalInDatabase(id);
+      await loadGoals();
+
+      setSelectedGoalId(null);
+      setGoalCreated(false);
+      setGoalStep("overview");
+
+      return true;
+    } catch (error) {
+      console.error("Failed to delete goal:", error);
+      setGoalsError("Unable to delete your goal.");
+      return false;
+    } finally {
+      setGoalsSaving(false);
+    }
   }
 
   // Retained for compatibility with other components; practice challenges do not use it.
@@ -227,7 +325,7 @@ export function useAppModel() {
     setSavedIncome(1200);
     setSavedAllocations(defaultAllocations);
     setBudgetError("");
-    setGoals(initialGoals.map((goal) => ({ ...goal })));
+    setGoals([]);
     setSelectedGoalId(null);
     setGoalStep("overview");
     setGoalName("");
@@ -260,9 +358,10 @@ export function useAppModel() {
     currentSavings, setCurrentSavings, goalCreated, setGoalCreated,
     simChoice, setSimChoice, totalExpenses, remaining, availableSavings,
     availableForGoal, committedSavings, actualMonthlySaving, totalMonthlySavings,
-    remainingAfterSavings, goalMonths, savingsProgress, outcome, goals, setGoals,
+    remainingAfterSavings, goalMonths, monthsUntilTarget, requiredMonthlySaving,
+    isOnTrack, canAffordRecommendedSaving, savingsProgress, outcome, goals, setGoals,
     selectedGoalId, setSelectedGoalId, startNewGoal, selectGoal, createGoal,
-    recordSavings, deleteGoal, navigate, resetAll, openLesson
+    recordSavings, deleteGoal, navigate, resetAll, openLesson, goalsLoading, goalsSaving, goalsError, loadGoals
   };
 }
 

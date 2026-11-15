@@ -659,3 +659,81 @@ small { color: var(--muted); }
   line-height: 1.5;
   margin-top: 16px;
 }
+
+/* Target Date Analysis card */
+.target-date-analysis {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 24px !important;
+  border-radius: 24px;
+  overflow: hidden;
+  margin: 10px 0 0;
+}
+
+.target-date-analysis h3 {
+  margin: 0 0 20px;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.target-date-details {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  min-width: 0;
+}
+
+.target-date-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  width: 100%;
+}
+
+.target-date-row span {
+  flex: 1 1 150px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.target-date-row strong {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
+.target-date-message {
+  margin: 20px 0 0;
+  line-height: 1.6;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.target-date-analysis button {
+  width: 100%;
+  max-width: 100%;
+  margin-top: 16px;
+  white-space: normal;
+}
+
+@media (max-width: 480px) {
+  .target-date-analysis {
+    padding: 20px !important;
+  }
+
+  .target-date-row {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .target-date-row strong {
+    text-align: left;
+  }
+}
