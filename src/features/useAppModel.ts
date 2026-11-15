@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
 import { getBudget, saveBudget } from "../services/budgetService";
 import { getGoals, createGoal as createGoalInDatabase, updateGoal as updateGoalInDatabase, deleteGoal as deleteGoalInDatabase, type SavingsGoal as DatabaseGoal} from "../services/goalsService";
-import { defaultAllocations } from "../data/content";
 import type { Tab, LessonStep, BudgetStep, GoalStep, Allocations } from "../data/content";
+import { useEffect, useMemo, useState } from "react";
+import { defaultAllocations, lessons } from "../data/content";
+import {  getLessonProgress,  completeLesson} from "../services/progressService";
+import { supabase } from "../lib/supabase";
 
 export type SavingsGoal = {
   id: string;
@@ -38,7 +40,18 @@ export function useAppModel() {
   const [lessonTitle, setLessonTitle] = useState("Needs vs. Wants");
   const [answer, setAnswer] = useState("");
   const [feedback, setFeedback] = useState<"correct" | "incorrect" | null>(null);
-  const [lessonComplete, setLessonComplete] = useState(false);
+  const [completedLessonIds, setCompletedLessonIds] =
+    useState<Set<string>>(new Set());
+  const [progressLoading, setProgressLoading] = useState(true);
+  const [progressError, setProgressError] = useState<string | null>(null);
+  const [savingLesson, setSavingLesson] = useState(false);
+  const lessonComplete = completedLessonIds.size > 0;
+  // Legacy setter kept for compatibility with other components
+const setLessonComplete = (_value: boolean) => {
+  // Lesson completion is now managed through Supabase
+};
+  const activeLessonId =
+    lessons.find((lesson) => lesson.title === lessonTitle)?.id;
 
   // Budget state and Supabase integration from main.
   const [budgetStep, setBudgetStep] = useState<BudgetStep>("overview");
@@ -71,6 +84,122 @@ export function useAppModel() {
     void loadBudget();
   }, []);
 
+
+  // Load lesson progress from Supabase
+  useEffect(() => {
+    let cancelled = false;
+    let requestId = 0;
+
+    const { data: { subscription } } =
+      supabase.auth.onAuthStateChange((_event, session) => {
+        const currentRequest = ++requestId;
+
+        setCompletedLessonIds(new Set());
+        setProgressError(null);
+
+        if (!session) {
+          setProgressLoading(false);
+          return;
+        }
+
+        setProgressLoading(true);
+
+        setTimeout(() => {
+          if (cancelled || currentRequest !== requestId) return;
+
+          async function loadProgress() {
+            try {
+              const progress = await getLessonProgress();
+
+              if (!cancelled && currentRequest === requestId) {
+                setCompletedLessonIds(
+                  new Set(progress.map((record) => record.lesson_id))
+                );
+              }
+            } catch (error) {
+              if (!cancelled && currentRequest === requestId) {
+                setProgressError(
+                  error instanceof Error
+                    ? error.message
+                    : "Failed to load lesson progress."
+                );
+              }
+            } finally {
+              if (!cancelled && currentRequest === requestId) {
+                setProgressLoading(false);
+              }
+            }
+          }
+
+          void loadProgress();
+        }, 0);
+      });
+
+    return () => {
+      cancelled = true;
+      requestId++;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  // Load lesson progress from Supabase
+  useEffect(() => {
+    let cancelled = false;
+    let requestId = 0;
+
+    const { data: { subscription } } =
+      supabase.auth.onAuthStateChange((_event, session) => {
+        const currentRequest = ++requestId;
+
+        setCompletedLessonIds(new Set());
+        setProgressError(null);
+
+        if (!session) {
+          setProgressLoading(false);
+          return;
+        }
+
+        setProgressLoading(true);
+
+        setTimeout(() => {
+          if (cancelled || currentRequest !== requestId) return;
+
+          async function loadProgress() {
+            try {
+              const progress = await getLessonProgress();
+
+              if (!cancelled && currentRequest === requestId) {
+                setCompletedLessonIds(
+                  new Set(progress.map((record) => record.lesson_id))
+                );
+              }
+            } catch (error) {
+              if (!cancelled && currentRequest === requestId) {
+                setProgressError(
+                  error instanceof Error
+                    ? error.message
+                    : "Failed to load lesson progress."
+                );
+              }
+            } finally {
+              if (!cancelled && currentRequest === requestId) {
+                setProgressLoading(false);
+              }
+            }
+          }
+
+          void loadProgress();
+        }, 0);
+      });
+
+    return () => {
+      cancelled = true;
+      requestId++;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  // Save budget changes to Supabase
   async function saveBudgetChanges() {
     try {
       setBudgetError("");
@@ -87,6 +216,7 @@ export function useAppModel() {
     }
   }
 
+  // Calculate expenses using main branch's updated logic
   function cancelBudgetEdits() {
     setIncome(savedIncome);
     setAllocations(savedAllocations);
@@ -94,8 +224,12 @@ export function useAppModel() {
   }
 
   const totalExpenses = Object.values(allocations).reduce(
-    (sum, value) => sum + Math.max(0, value), 0
+    
+    (sum, value) => sum + Math.max(0, value),
+    0
+  
   );
+
   const remaining = income - totalExpenses;
   const needsTotal = allocations.groceries + allocations.transportation + allocations.school;
   const wantsTotal = allocations.entertainment;
@@ -312,12 +446,13 @@ export function useAppModel() {
   }
 
   function resetAll() {
+
     setTab("home");
     setLessonStep("list");
-    setLessonTitle("Needs vs. Wants");
-    setLessonComplete(false);
     setAnswer("");
     setFeedback(null);
+
+    // Reset temporary budget state
     setBudgetStep("overview");
     setIncome(1200);
     setAllocations(defaultAllocations);
@@ -338,31 +473,127 @@ export function useAppModel() {
     setSimChoice(null);
   }
 
-  const openLesson = (title: string) => {
-    setLessonTitle(title);
-    setAnswer("");
-    setFeedback(null);
-    setLessonStep("intro");
-  };
 
-  return {
-    tab, setTab, lessonStep, setLessonStep, lessonTitle, setLessonTitle,
-    answer, setAnswer, feedback, setFeedback, lessonComplete, setLessonComplete,
-    budgetStep, setBudgetStep, income, setIncome, allocations, setAllocations,
-    budgetSaved, setBudgetSaved, savedIncome, setSavedIncome,
-    savedAllocations, setSavedAllocations, budgetLoading, budgetError,
-    saveBudgetChanges, cancelBudgetEdits, canSaveBudget,
-    needsTotal, wantsTotal, savingsTotal, needsPercent, wantsPercent, savingsPercent,
-    goalStep, setGoalStep, goalName, setGoalName, goalCategory, setGoalCategory,
-    target, setTarget, targetDate, setTargetDate, monthlySaving, setMonthlySaving,
-    currentSavings, setCurrentSavings, goalCreated, setGoalCreated,
-    simChoice, setSimChoice, totalExpenses, remaining, availableSavings,
-    availableForGoal, committedSavings, actualMonthlySaving, totalMonthlySavings,
-    remainingAfterSavings, goalMonths, monthsUntilTarget, requiredMonthlySaving,
-    isOnTrack, canAffordRecommendedSaving, savingsProgress, outcome, goals, setGoals,
-    selectedGoalId, setSelectedGoalId, startNewGoal, selectGoal, createGoal,
-    recordSavings, deleteGoal, navigate, resetAll, openLesson, goalsLoading, goalsSaving, goalsError, loadGoals
-  };
+  const openLesson = (title: string) => { setLessonTitle(title); setAnswer(""); setFeedback(null); setLessonStep("intro"); };
+  const nextLesson = lessons.find(
+  (lesson) => !completedLessonIds.has(lesson.id)
+);
+
+function openNextLesson() {
+  if (progressLoading || progressError) return;
+
+  if (nextLesson) {
+    openLesson(nextLesson.title);
+    navigate("learn");
+  } else {
+    setLessonStep("list");
+    navigate("learn");
+  }
+}
+
+  async function finishLesson() {
+  if (!activeLessonId || savingLesson) return;
+
+  if (completedLessonIds.has(activeLessonId)) {
+    setLessonStep("complete");
+    return;
+  }
+
+  setSavingLesson(true);
+  setProgressError(null);
+
+  try {
+    await completeLesson(activeLessonId);
+
+    setCompletedLessonIds((previous) => {
+      const updated = new Set(previous);
+      updated.add(activeLessonId);
+      return updated;
+    });
+
+    setLessonStep("complete");
+  } catch (error) {
+    setProgressError(
+      error instanceof Error
+        ? error.message
+        : "Failed to save lesson progress."
+    );
+  } finally {
+    setSavingLesson(false);
+  }
+}
+
+return {
+  tab, setTab,
+  lessonStep, setLessonStep,
+  lessonTitle, setLessonTitle,
+  answer, setAnswer,
+  feedback, setFeedback,
+
+  // Lesson features
+  lessonComplete, setLessonComplete,
+  completedLessonIds,
+  progressLoading,
+  progressError,
+  savingLesson,
+  finishLesson,
+  nextLesson,
+  openNextLesson,
+
+  // Budget features
+  budgetStep, setBudgetStep,
+  income, setIncome,
+  allocations, setAllocations,
+  budgetSaved, setBudgetSaved,
+  canSaveBudget,
+  savedIncome, setSavedIncome,
+  savedAllocations, setSavedAllocations,
+  cancelBudgetEdits,
+  needsTotal,
+  wantsTotal,
+  savingsTotal,
+  needsPercent,
+  wantsPercent,
+  savingsPercent,
+  saveBudgetChanges,
+
+  // Goal features
+  goalStep, setGoalStep,
+  goalName, setGoalName,
+  goalCategory, setGoalCategory,
+  target, setTarget,
+  targetDate, setTargetDate,
+  monthlySaving, setMonthlySaving,
+  goalCreated, setGoalCreated,
+  simChoice, setSimChoice,
+
+  // Goals database integration
+  currentSavings, setCurrentSavings,
+  availableForGoal,
+  actualMonthlySaving,
+  savingsProgress,
+  goals,
+  selectedGoalId,
+  startNewGoal,
+  selectGoal,
+  createGoal,
+  deleteGoal,
+  goalsLoading,
+  goalsSaving,
+  goalsError,
+  monthsUntilTarget,
+  requiredMonthlySaving,
+  isOnTrack,
+
+  // Calculations and navigation
+  totalExpenses,
+  remaining,
+  goalMonths,
+  outcome,
+  navigate,
+  resetAll,
+  openLesson,
+};
 }
 
 export type AppModel = ReturnType<typeof useAppModel>;

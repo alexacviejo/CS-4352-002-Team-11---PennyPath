@@ -19,7 +19,7 @@ function getGreeting() {
 }
 
 export default function HomeView({ model }: { model: AppModel }) {
-  const { tab, setTab, lessonStep, setLessonStep, lessonTitle, setLessonTitle, answer, setAnswer, feedback, setFeedback, lessonComplete, setLessonComplete, budgetStep, setBudgetStep, income, setIncome, allocations, setAllocations, budgetSaved, setBudgetSaved, goalStep, setGoalStep, goalName, setGoalName, goalCategory, setGoalCategory, target, setTarget, targetDate, setTargetDate, monthlySaving, setMonthlySaving, goalCreated, setGoalCreated, simChoice, setSimChoice, totalExpenses, remaining, goalMonths, outcome, navigate, resetAll, openLesson } = model;
+  const { tab, setTab, lessonStep, setLessonStep, lessonTitle, setLessonTitle, answer, setAnswer, feedback, setFeedback, lessonComplete, setLessonComplete, budgetStep, setBudgetStep, income, setIncome, allocations, setAllocations, budgetSaved, setBudgetSaved, goalStep, setGoalStep, goalName, setGoalName, goalCategory, setGoalCategory, target, setTarget, targetDate, setTargetDate, monthlySaving, setMonthlySaving, goalCreated, setGoalCreated, simChoice, setSimChoice, totalExpenses, remaining, goalMonths, outcome, navigate, resetAll, openLesson, nextLesson, openNextLesson, progressLoading, progressError  } = model;
   
   const [displayName, setDisplayName] = useState("THERE");
   const [greeting, setGreeting] = useState(getGreeting);
@@ -68,9 +68,40 @@ export default function HomeView({ model }: { model: AppModel }) {
               <section className="card lesson-card">
                 <div className="card-head"><div><span className="eyebrow">LEVEL 4 · SMART SPENDER</span><h2>Keep your momentum</h2></div><span className="level-badge">4</span></div>
                 <Progress value={lessonComplete ? 78 : 68} label={lessonComplete ? "780 / 1,000 XP" : "680 / 1,000 XP"} />
-                <div className="next-lesson"><span className="tile-icon yellow"><Icon name="sparkle" /></span><div><b>{lessonComplete ? "Budgeting Basics" : "Needs vs. Wants"}</b><small>{lessonComplete ? "Next up · 5 min" : "2 of 5 lessons · 4 min"}</small></div></div>
-                <Button onClick={() => { navigate("learn"); openLesson(lessonComplete ? "Budgeting Basics" : "Needs vs. Wants"); }} icon="arrow">Continue learning</Button>
-              </section>
+<div className="next-lesson">
+  <span className={`tile-icon ${nextLesson?.color ?? "sage"}`}>
+    <Icon name={nextLesson?.icon ?? "check"} />
+  </span>
+
+  <div>
+    <b>
+      {progressLoading
+        ? "Loading your progress..."
+        : progressError
+          ? "Unable to load lessons"
+          : nextLesson?.title ?? "All lessons completed!"}
+    </b>
+
+    <small>
+      {progressError
+        ? "Please refresh to try again"
+        : nextLesson
+          ? `Next up · +${nextLesson.xp} XP`
+          : "You've completed your learning path!"}
+    </small>
+  </div>
+</div>        
+<Button
+  onClick={openNextLesson}
+  disabled={progressLoading || !!progressError}
+  icon="arrow"
+>
+  {progressLoading
+    ? "Loading..."
+    : nextLesson
+      ? "Continue learning"
+      : "Review lessons"}
+</Button>              </section>
               <div className="section-title"><h2>Your money snapshot</h2><button onClick={() => navigate("budget")}>See budget</button></div>
               <section className="money-grid">
                 <button className="snapshot-card budget-snapshot" onClick={() => navigate("budget")}><span className="tile-icon cream"><Icon name="wallet" /></span><small>LEFT THIS MONTH</small><b>${Math.max(0, budgetSaved ? remaining : 250).toLocaleString()}</b><span>of ${income.toLocaleString()}</span><Progress value={budgetSaved ? totalExpenses / income * 100 : 79} /></button>
