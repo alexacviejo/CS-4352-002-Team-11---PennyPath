@@ -1,3 +1,4 @@
+import { getBudget, saveBudget } from "../services/budgetService";
 import type { Tab, LessonStep, BudgetStep, GoalStep, Allocations } from "../data/content";
 import { useEffect, useMemo, useState } from "react";
 import { defaultAllocations, lessons } from "../data/content";
@@ -25,7 +26,34 @@ const setLessonComplete = (_value: boolean) => {
   const [budgetStep, setBudgetStep] = useState<BudgetStep>("overview");
   const [income, setIncome] = useState(1200);
   const [allocations, setAllocations] = useState<Allocations>(defaultAllocations);
+  useEffect(() => {
+    async function loadBudget() {
+      try {
+        const savedBudget = await getBudget();
+
+        if (savedBudget) {
+          setIncome(savedBudget.income);
+          setAllocations(savedBudget.allocations);
+
+          setSavedIncome(savedBudget.income);
+          setSavedAllocations(savedBudget.allocations);
+          setBudgetSaved(true);
+        }
+      } catch (error) {
+        console.error("Failed to load budget:", error);
+        setBudgetError("We couldn't load your saved budget.");
+      } finally {
+        setBudgetLoading(false);
+      }
+    }
+
+    loadBudget();
+  }, []);
   const [budgetSaved, setBudgetSaved] = useState(false);
+  const [savedIncome, setSavedIncome] = useState(1200);
+  const [savedAllocations, setSavedAllocations] = useState<Allocations>(defaultAllocations);
+  const [budgetLoading, setBudgetLoading] = useState(true);
+  const [budgetError, setBudgetError] = useState("");
   const [goalStep, setGoalStep] = useState<GoalStep>("overview");
   const [goalName, setGoalName] = useState("New laptop");
   const [goalCategory, setGoalCategory] = useState("Tech");
@@ -35,66 +63,104 @@ const setLessonComplete = (_value: boolean) => {
   const [goalCreated, setGoalCreated] = useState(false);
   const [simChoice, setSimChoice] = useState<"entertainment" | "savings" | "contribution" | null>(null);
 
+
+  // Load lesson progress from Supabase
   useEffect(() => {
-  let cancelled = false;
-  let requestId = 0;
+    let cancelled = false;
+    let requestId = 0;
 
-  const { data: { subscription } } =
-    supabase.auth.onAuthStateChange((_event, session) => {
-      const currentRequest = ++requestId;
+    const { data: { subscription } } =
+      supabase.auth.onAuthStateChange((_event, session) => {
+        const currentRequest = ++requestId;
 
-      // Clear progress belonging to the previous session
-      setCompletedLessonIds(new Set());
-      setProgressError(null);
+        setCompletedLessonIds(new Set());
+        setProgressError(null);
 
-      if (!session) {
-        setProgressLoading(false);
-        return;
-      }
-
-      setProgressLoading(true);
-
-      // Defer Supabase queries outside the auth callback
-      setTimeout(() => {
-        if (cancelled || currentRequest !== requestId) return;
-
-        async function loadProgress() {
-          try {
-            const progress = await getLessonProgress();
-
-            if (!cancelled && currentRequest === requestId) {
-              setCompletedLessonIds(
-                new Set(progress.map((record) => record.lesson_id))
-              );
-            }
-          } catch (error) {
-            if (!cancelled && currentRequest === requestId) {
-              setProgressError(
-                error instanceof Error
-                  ? error.message
-                  : "Failed to load lesson progress."
-              );
-            }
-          } finally {
-            if (!cancelled && currentRequest === requestId) {
-              setProgressLoading(false);
-            }
-          }
+        if (!session) {
+          setProgressLoading(false);
+          return;
         }
 
-        void loadProgress();
-      }, 0);
-    });
+        setProgressLoading(true);
 
-  return () => {
-    cancelled = true;
-    requestId++;
-    subscription.unsubscribe();
-  };
-}, []);
+        setTimeout(() => {
+          if (cancelled || currentRequest !== requestId) return;
 
-  const totalExpenses = Object.values(allocations).reduce((sum, value) => sum + value, 0);
+          async function loadProgress() {
+            try {
+              const progress = await getLessonProgress();
+
+              if (!cancelled && currentRequest === requestId) {
+                setCompletedLessonIds(
+                  new Set(progress.map((record) => record.lesson_id))
+                );
+              }
+            } catch (error) {
+              if (!cancelled && currentRequest === requestId) {
+                setProgressError(
+                  error instanceof Error
+                    ? error.message
+                    : "Failed to load lesson progress."
+                );
+              }
+            } finally {
+              if (!cancelled && currentRequest === requestId) {
+                setProgressLoading(false);
+              }
+            }
+          }
+
+          void loadProgress();
+        }, 0);
+      });
+
+    return () => {
+      cancelled = true;
+      requestId++;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  // Save budget changes to Supabase
+  async function saveBudgetChanges() {
+    try {
+      const savedBudget = await saveBudget(income, allocations);
+
+      setSavedIncome(savedBudget.income);
+      setSavedAllocations(savedBudget.allocations);
+      setBudgetSaved(true);
+      setBudgetStep("saved");
+
+      return true;
+    } catch (error) {
+      console.error("Failed to save budget:", error);
+      return false;
+    }
+  }
+
+  // Calculate expenses using main branch's updated logic
+  const totalExpenses = Object.values(allocations).reduce(
+    (sum, value) => sum + Math.max(0, value),
+    0
+  );
+
   const remaining = income - totalExpenses;
+
+  // Group allocations using the 50/30/20 guideline
+  const needsTotal =
+    allocations.groceries +
+    allocations.transportation +
+    allocations.school;
+
+  const wantsTotal = allocations.entertainment;
+  const savingsTotal = allocations.savings;
+
+  // Calculate each group's percentage of monthly income
+  const needsPercent = income > 0 ? (needsTotal / income) * 100 : 0;
+  const wantsPercent = income > 0 ? (wantsTotal / income) * 100 : 0;
+  const savingsPercent = income > 0 ? (savingsTotal / income) * 100 : 0;
+
+  const canSaveBudget = income > 0 && remaining >= 0;
   const goalMonths = Math.max(1, Math.ceil(target / Math.max(1, monthlySaving)));
   const outcome = useMemo(() => {
     if (simChoice === "entertainment") return { title: "Smart rebalancing", starting: 225, saved: monthlySaving, delay: 0, entertainment: Math.max(0, allocations.entertainment - 75), note: "Your goal stays on schedule, and entertainment drops by $75 this month." };
@@ -108,11 +174,38 @@ const setLessonComplete = (_value: boolean) => {
   }
 
   function resetAll() {
-    setTab("home"); setLessonStep("list"); setAnswer(""); setFeedback(null);
-    setBudgetStep("overview"); setIncome(1200); setAllocations(defaultAllocations); setBudgetSaved(false);
-    setGoalStep("overview"); setGoalName("New laptop"); setGoalCategory("Tech"); setTarget(600);
-    setTargetDate(new Date().toISOString().slice(0, 10)); setMonthlySaving(150); setGoalCreated(false); setSimChoice(null);
+
+    setTab("home");
+    setLessonStep("list");
+    setAnswer("");
+    setFeedback(null);
+
+    // Reset temporary budget state
+    setBudgetStep("overview");
+    setIncome(1200);
+    setAllocations(defaultAllocations);
+    setBudgetSaved(false);
+    setSavedIncome(1200);
+    setSavedAllocations(defaultAllocations);
+
+    // Reset goal state
+    setGoalStep("overview");
+    setGoalName("New laptop");
+    setGoalCategory("Tech");
+    setTarget(600);
+    setTargetDate(new Date().toISOString().slice(0, 10));
+    setMonthlySaving(150);
+    setGoalCreated(false);
+    setSimChoice(null);
   }
+
+  // Restore the last saved budget if edits are cancelled
+  function cancelBudgetEdits() {
+    setIncome(savedIncome);
+    setAllocations(savedAllocations);
+    setBudgetStep("overview");
+  }
+
 
   const openLesson = (title: string) => { setLessonTitle(title); setAnswer(""); setFeedback(null); setLessonStep("intro"); };
   const nextLesson = lessons.find(
@@ -163,6 +256,58 @@ function openNextLesson() {
   }
 }
 
-  return { tab, setTab, lessonStep, setLessonStep, lessonTitle, setLessonTitle, answer, setAnswer, feedback, setFeedback, lessonComplete, setLessonComplete, completedLessonIds, progressLoading, progressError, savingLesson, finishLesson, budgetStep, setBudgetStep, income, setIncome, allocations, setAllocations, budgetSaved, setBudgetSaved, goalStep, setGoalStep, goalName, setGoalName, goalCategory, setGoalCategory, target, setTarget, targetDate, setTargetDate, monthlySaving, setMonthlySaving, goalCreated, setGoalCreated, simChoice, setSimChoice, totalExpenses, remaining, goalMonths, outcome, navigate, resetAll, openLesson, nextLesson, openNextLesson };
+return {
+  tab, setTab,
+  lessonStep, setLessonStep,
+  lessonTitle, setLessonTitle,
+  answer, setAnswer,
+  feedback, setFeedback,
+
+  // Lesson features
+  lessonComplete, setLessonComplete,
+  completedLessonIds,
+  progressLoading,
+  progressError,
+  savingLesson,
+  finishLesson,
+  nextLesson,
+  openNextLesson,
+
+  // Budget features
+  budgetStep, setBudgetStep,
+  income, setIncome,
+  allocations, setAllocations,
+  budgetSaved, setBudgetSaved,
+  canSaveBudget,
+  savedIncome, setSavedIncome,
+  savedAllocations, setSavedAllocations,
+  cancelBudgetEdits,
+  needsTotal,
+  wantsTotal,
+  savingsTotal,
+  needsPercent,
+  wantsPercent,
+  savingsPercent,
+  saveBudgetChanges,
+
+  // Goal features
+  goalStep, setGoalStep,
+  goalName, setGoalName,
+  goalCategory, setGoalCategory,
+  target, setTarget,
+  targetDate, setTargetDate,
+  monthlySaving, setMonthlySaving,
+  goalCreated, setGoalCreated,
+  simChoice, setSimChoice,
+
+  // Calculations and navigation
+  totalExpenses,
+  remaining,
+  goalMonths,
+  outcome,
+  navigate,
+  resetAll,
+  openLesson,
+};
 }
 export type AppModel = ReturnType<typeof useAppModel>;

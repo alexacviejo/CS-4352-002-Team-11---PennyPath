@@ -56,14 +56,48 @@ export function Button({ children, onClick, variant = "primary", disabled = fals
   return <button className={`btn btn-${variant}`} onClick={onClick} disabled={disabled}>{children}{icon && <Icon name={icon} size={19} />}</button>;
 }
 
-export function NumberInput({ value, onChange, label, prefix = "$" }: { value: number; onChange: (value: number) => void; label: string; prefix?: string }) {
+
+export function NumberInput({
+  value,
+  onChange,
+  label,
+  prefix = "$"
+}: {
+  value: number;
+  onChange: (value: number) => void;
+  label: string;
+  prefix?: string;
+}) {
   return (
     <label className="field">
       <span>{label}</span>
-      <span className="input-wrap"><b>{prefix}</b><input type="number" min="0" value={value || ""} onChange={(e) => onChange(Math.max(0, Number(e.target.value)))} /></span>
+      <span className="input-wrap">
+        <b>{prefix}</b>
+        <input
+          type="number"
+          min="0"
+          step="0.01"
+          value={value || ""}
+          onChange={(e) => {
+            const inputValue = e.target.value;
+
+            if (inputValue === "") {
+              onChange(0);
+              return;
+            }
+
+            const amount = Number(inputValue);
+
+            if (Number.isFinite(amount)) {
+              onChange(Math.max(0, amount));
+            }
+          }}
+        />
+      </span>
     </label>
   );
 }
+
 
 export function TopBar({ title, onBack, action }: { title: string; onBack?: () => void; action?: React.ReactNode }) {
   return <div className="topbar">{onBack ? <button className="icon-btn" onClick={onBack} aria-label="Go back"><Icon name="back" /></button> : <div className="brand-dot">P</div>}<div className="topbar-title">{title}</div>{action || <div className="topbar-spacer" />}</div>;
